@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101b33" />
+  <meta name="description" content="Fiszki do nauki z zapisem postępów." />
+  <title>Moje fiszki — nauka</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 20% 0%, #253c74 0%, transparent 44%), radial-gradient(ellipse at 100% 100%, #193e50 0%, transparent 50%), #101827; color: #f4f7ff; }
+    .app { width: min(100% - 36px, 660px); margin: 0 auto; padding: clamp(28px, 7vh, 65px) 0 50px; }
+    .eyebrow { font-size: .8rem; letter-spacing: .16em; text-transform: uppercase; color: #a2b5d9; font-weight: 750; }
+    h1 { font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -.05em; margin: 7px 0 10px; }
+    .subtitle { color: #b7c5df; margin: 0 0 28px; font-size: 1rem; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    .stat { background: #ffffff0e; border: 1px solid #ffffff20; border-radius: 14px; padding: 15px 13px; }
+    .stat strong { display: block; font-size: 1.55rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+    .stat span { display: block; font-size: .79rem; color: #b5c2da; margin-top: 3px; }
+    .progress { height: 8px; border-radius: 100px; background: #ffffff1a; overflow: hidden; margin: 18px 0 26px; }
+    #progress-fill { width: 0; height: 100%; background: linear-gradient(90deg, #61d5b3, #90edbc); border-radius: inherit; transition: width .25s; }
+    .flashcard { width: 100%; height: min(48vh, 310px); min-height: 235px; padding: 25px; border: 1px solid #aec5ee4d; border-radius: 23px; background: linear-gradient(145deg, #263f6c, #1b2844 70%); color: inherit; box-shadow: 0 20px 50px #0004; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: transform .15s, border-color .15s; }
+    .flashcard:hover { transform: translateY(-2px); border-color: #a6c6ff8c; }
+    .flashcard:focus-visible, button:focus-visible { outline: 3px solid #8cbdff; outline-offset: 3px; }
+    .card-caption { font-size: .85rem; color: #b9cae9; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+    .card-word { font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1.2; font-weight: 800; overflow-wrap: anywhere; }
+    .card-hint { font-size: .95rem; color: #b9c9e6; }
+    .controls { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .control { border: 0; border-radius: 15px; padding: 17px 12px; font-family: inherit; font-size: 1.06rem; font-weight: 800; cursor: pointer; transition: filter .15s, transform .15s; }
+    .control:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.07); }
+    .control:disabled { opacity: .42; cursor: not-allowed; }
+    .dont-know { background: #ffcad1; color: #571c2c; }
+    .know { background: #90e8c6; color: #163e33; }
+    .note { min-height: 46px; color: #b4c5df; font-size: .9rem; line-height: 1.5; text-align: center; margin: 17px auto 0; }
+    .footer { margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .reset { font: inherit; background: transparent; color: #dee8fa; border: 1px solid #93a8ca66; border-radius: 12px; padding: 11px 16px; cursor: pointer; }
+    .reset:hover { background: #ffffff12; }
+    .storage { text-align: center; color: #90a3c0; font-size: .75rem; margin: 17px 0 0; }
+    .complete { color: #92e8c6; }
+    @media (max-width: 420px) { .stat { padding: 11px 9px; } .stat strong { font-size: 1.35rem; } .stat span { font-size: .7rem; } .control { font-size: .98rem; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="eyebrow">Twój zestaw do nauki</div>
+    <h1>Moje fiszki</h1>
+    <p class="subtitle">Kliknij fiszkę, sprawdź odpowiedź, a potem oceń swoją znajomość.</p>
+
+    <section class="stats" aria-label="Postępy w nauce">
+      <div class="stat"><strong id="total">0</strong><span>Wszystkie fiszki</span></div>
+      <div class="stat"><strong id="learned">0</strong><span>Opanowane</span></div>
+      <div class="stat"><strong id="remaining">0</strong><span>Do nauki</span></div>
+    </section>
+    <div class="progress" role="progressbar" aria-label="Opanowane fiszki" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progress-fill"></div></div>
+
+    <button id="flashcard" class="flashcard" type="button" aria-label="Odwróć fiszkę">
+      <span class="card-caption" id="card-side">Pytanie</span>
+      <span class="card-word" id="card-word">Ładowanie…</span>
+      <span class="card-hint" id="card-hint">Kliknij, aby zobaczyć odpowiedź</span>
+    </button>
+    <div class="controls">
+      <button class="control dont-know" id="dont-know" type="button" disabled>✕ Не знаю</button>
+      <button class="control know" id="know" type="button" disabled>✓ Знаю</button>
+    </div>
+    <p class="note" id="note" role="status" aria-live="polite">Nieopanowane fiszki wracają do powtórek.</p>
+    <div class="footer"><button class="reset" id="reset" type="button">↻ Сбросить прогресс</button></div>
+    <p class="storage">Postępy zapisują się w tej przeglądarce na tym urządzeniu.</p>
+  </main>
+
+  <script>
+    "use strict";
+
+    // EDYTUJ TUTAJ: podmień przykładowe fiszki na własne.
+    // id musi być unikalne i stałe — jego zmiana wyzeruje postęp danej fiszki.
+    // front = pierwsza strona, back = odpowiedź po kliknięciu.
+    const FISZKI = [
+      { id: "1", front: "dom", back: "дом" },
+      { id: "2", front: "książka", back: "книга" },
+      { id: "3", front: "słońce", back: "солнце" },
+      { id: "4", front: "przyjaciel", back: "друг" },
+      { id: "5", front: "szkoła", back: "школа" },
+      { id: "6", front: "woda", back: "вода" },
+      { id: "7", front: "miasto", back: "город" },
+      { id: "8", front: "podróż", back: "путешествие" },
+      { id: "9", front: "praca", back: "работа" },
+      { id: "10", front: "czas", back: "время" }
+    ];
+
+    // Osobny klucz dla tego zestawu (zmień, jeśli tworzysz drugi zestaw w tej samej witrynie).
+    const STORAGE_KEY = "moje-fiszki-nauczone-v1";
+    const byId = new Map(FISZKI.map(card => [card.id, card]));
+    if (byId.size !== FISZKI.length) {
+      console.error("Każda fiszka musi mieć inne id.");
+    }
+
+    const el = id => document.getElementById(id);
+    const cardButton = el("flashcard");
+    const knowButton = el("know");
+    const dontKnowButton = el("dont-know");
+
+    function loadLearned() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if (!Array.isArray(stored)) return new Set();
+        return new Set(stored.filter(id => byId.has(id)));
+      } catch {
+        return new Set();
+      }
+    }
+    function saveLearned() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...learned])); }
+      catch { el("note").textContent = "Nie udało się zapisać postępów w tej przeglądarce."; }
+    }
+    function shuffle(items) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    let learned = loadLearned();
+    let queue = shuffle(FISZKI.filter(card => !learned.has(card.id)).map(card => card.id));
+    let currentId = null;
+    let isBack = false;
+
+    function renderStats() {
+      el("total").textContent = String(FISZKI.length);
+      el("learned").textContent = String(learned.size);
+      el("remaining").textContent = String(FISZKI.length - learned.size);
+      const percentage = FISZKI.length ? Math.round(100 * learned.size / FISZKI.length) : 100;
+      el("progress-fill").style.width = `${percentage}%`;
+      document.querySelector(".progress").setAttribute("aria-valuenow", String(percentage));
+    }
+
+    function showCurrent() {
+      renderStats();
+      isBack = false;
+      // Nienauczone fiszki zawsze zostają w kolejce; opanowane nigdy do niej nie wracają.
+      if (queue.length === 0) {
+        const missing = FISZKI.filter(card => !learned.has(card.id)).map(card => card.id);
+        queue = shuffle(missing);
+      }
+      currentId = queue.shift() || null;
+      const finished = currentId === null;
+      el("card-side").textContent = finished ? "Gratulacje!" : "Pytanie";
+      el("card-word").textContent = finished ? "Wszystko umiesz! 🎉" : byId.get(currentId).front;
+      el("card-hint").textContent = finished ? "Zresetuj postęp, aby zacząć od nowa." : "Kliknij, aby zobaczyć odpowiedź";
+      cardButton.disabled = finished;
+      cardButton.setAttribute("aria-label", finished ? "Wszystkie fiszki opanowane" : "Pokaż odpowiedź");
+      knowButton.disabled = true;
+      dontKnowButton.disabled = true;
+      el("note").textContent = finished ? "Cały zestaw został opanowany. Brawo!" : "Najpierw odwróć fiszkę, a następnie wybierz odpowiedź.";
+      el("note").classList.toggle("complete", finished);
+    }
+
+    function flipCard() {
+      if (currentId === null) return;
+      isBack = !isBack;
+      const card = byId.get(currentId);
+      el("card-side").textContent = isBack ? "Odpowiedź" : "Pytanie";
+      el("card-word").textContent = isBack ? card.back : card.front;
+      el("card-hint").textContent = isBack ? "Oceń, czy pamiętasz tę fiszkę" : "Kliknij, aby zobaczyć odpowiedź";
+      cardButton.setAttribute("aria-label", isBack ? "Pokaż pytanie" : "Pokaż odpowiedź");
+      knowButton.disabled = !isBack;
+      dontKnowButton.disabled = !isBack;
+    }
+
+    function rate(isKnown) {
+      if (currentId === null || !isBack) return;
+      if (isKnown) {
+        learned.add(currentId);
+        saveLearned();
+      } else {
+        // Powtórka dopiero za innymi oczekującymi fiszkami, nie natychmiast.
+        queue.push(currentId);
+      }
+      showCurrent();
+    }
+
+    cardButton.addEventListener("click", flipCard);
+    knowButton.addEventListener("click", () => rate(true));
+    dontKnowButton.addEventListener("click", () => rate(false));
+    el("reset").addEventListener("click", () => {
+      if (!window.confirm("Czy na pewno usunąć cały zapisany postęp nauki?")) return;
+      learned = new Set();
+      saveLearned();
+      queue = shuffle(FISZKI.map(card => card.id));
+      showCurrent();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+      if (event.code === "Space" && event.target === document.body) {
+        event.preventDefault();
+        flipCard();
+      } else if (event.code === "ArrowLeft" && !dontKnowButton.disabled) {
+        event.preventDefault();
+        rate(false);
+      } else if (event.code === "ArrowRight" && !knowButton.disabled) {
+        event.preventDefault();
+        rate(true);
+      }
+    });
+
+    showCurrent();
+  </script>
+</body>
+</html>
