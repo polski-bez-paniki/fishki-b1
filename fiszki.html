@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fiszki rosyjsko-polskie</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:wght@400;600&display=swap">
+<style>
+:root{--bg:#f3efe6;--ink:#1d2a3a;--muted:#5d6a78;--front:#fffdf8;--back:#1d2a3a;--backink:#f3efe6;--line:#d8d1c0;--accent:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121821;--ink:#e8e4d8;--muted:#9aa5b1;--front:#1c2530;--back:#e8e4d8;--backink:#1d2a3a;--line:#2d3947;--accent:#ff8a80}}
+:root[data-theme="dark"]{--bg:#121821;--ink:#e8e4d8;--muted:#9aa5b1;--front:#1c2530;--back:#e8e4d8;--backink:#1d2a3a;--line:#2d3947;--accent:#ff8a80}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+main{max-width:560px;margin:0 auto;padding:20px 16px 40px}
+h1{font:600 1.4rem/1.2 Literata,Georgia,serif;margin:8px 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.scene{perspective:1200px;height:280px;margin:0 0 16px}
+.card{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.3,.7,.2,1);cursor:pointer;border:0;padding:0;background:none;display:block;font:inherit;color:inherit}
+.card.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;overflow-wrap:anywhere}
+.front{background:var(--front);border:1px solid var(--line);box-shadow:0 1px 0 var(--line)}
+.back{background:var(--back);color:var(--backink);transform:rotateY(180deg)}
+.word{font:600 clamp(1.8rem,8vw,2.6rem)/1.15 Literata,Georgia,serif}
+.lang{font-size:.85rem;color:var(--muted);margin-top:14px}
+.back .lang{color:var(--backink);opacity:.7}
+.card:focus-visible,button.btn:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.decksel{margin-bottom:16px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.count{color:var(--muted);font-variant-numeric:tabular-nums;min-width:4.5em;text-align:center}
+.btn{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--front);color:var(--ink);cursor:pointer;min-height:44px}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+form{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:20px}
+h2{font:600 1.1rem Literata,Georgia,serif;margin:0}
+label{display:grid;gap:4px;font-size:.9rem;color:var(--muted)}
+select,input{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--front);color:var(--ink);min-height:44px;width:100%}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Fiszki rosyjsko-polskie</h1>
+<p class="sub">Kliknij kartę albo naciśnij spację, aby ją obrócić. Strzałki przełączają fiszki.</p>
+
+<div class="tabs"><button class="btn tab on" id="tabS">Słówka</button><button class="btn tab" id="tabW">Wyrażenia</button></div>
+<label class="decksel">Zestaw<select id="deck"></select></label>
+
+<div class="scene">
+  <button class="card" id="card" aria-label="Obróć fiszkę">
+    <span class="face front"><span class="word" id="fw"></span><span class="lang" id="fl"></span></span>
+    <span class="face back"><span class="word" id="bw"></span><span class="lang" id="bl"></span></span>
+  </button>
+</div>
+
+<div class="row">
+  <button class="btn" id="prev" aria-label="Poprzednia fiszka">Wstecz</button>
+  <span class="count" id="count"></span>
+  <button class="btn primary" id="next" aria-label="Następna fiszka">Dalej</button>
+</div>
+
+<div class="tools">
+  <button class="btn" id="shuffle">Pomieszaj</button>
+  <button class="btn" id="dir">Kierunek: polski → rosyjski</button>
+  <button class="btn" id="del">Usuń tę fiszkę</button>
+</div>
+
+<form id="add" autocomplete="off">
+  <h2>Dodaj własną fiszkę</h2>
+  <label>Po rosyjsku<input id="ru" lang="ru" required></label>
+  <label>Po polsku<input id="pl" lang="pl" required></label>
+  <button class="btn primary" type="submit">Dodaj fiszkę</button>
+</form>
+</main>
+
+<script>
+(function(){
+var KEY="fiszki-ru-pl-v3";
+function D(t){return t.trim().split("\n").map(function(l){var x=l.split("|");return [x[1].trim(),x[0].trim()]})}
+var travel=D(`wyspa|остров
+bilet ulgowy|льготный билет
+przechowalnia bagażu|камера хранения
+odprawa graniczna|пограничный контроль
+schronisko|туристический приют
+pensjonat|пансион
+domek letniskowy|дачный домик
+pokrowiec|чехол
+śpiwór|спальный мешок
+szczyt|вершина
+muszelki|ракушки
+komórka|мобильник
+zabytki|достопримечательности`);
+var r1=D(`włos, włosy|волос, волосы
+wąs, wąsy|ус, усы
+rzęsa, rzęsy|ресница, ресницы
+oko, oczy|глаз, глаза
+ucho, uszy|ухо, уши
+brew, brwi|бровь, брови
+powieka, powieki|веко, веки
+policzek, policzki|щека, щёки
+ręka, ręce|рука, руки
+palec, palce|палец, пальцы
+dłoń, dłonie|ладонь, ладони
+łokieć, łokcie|локоть, локти
+paznokieć, paznokcie|ноготь, ногти
+ramię, ramiona|плечо, плечи
+czoło|лоб
+szyja|шея
+kucyk|хвост (причёска)
+warkocz|коса
+broda|борода
+bródka|бородка
+baczki|бакенбарды
+usta|губы, рот
+plecy|спина
+twarz|лицо
+nos|нос
+głowa|голова
+kark|затылок, загривок
+brzuch|живот
+ciało|тело
+kość|кость
+mięsień|мышца
+żebro|ребро
+płuco|лёгкое
+gardło|горло
+serce|сердце
+pierś|грудь
+barki|плечи (верхняя часть)
+biodro|бедро (таз)
+udo|бедро
+kolano|колено
+łydka|икра
+stopa|ступня
+pięta|пятка
+noga|нога
+ząb, zęby|зуб, зубы
+piegi|веснушки
+pieprzyk|родинка
+zmarszczki|морщины
+grzywka|чёлка
+loki|локоны
+płeć|пол
+wiek|возраст
+wzrost|рост
+zarost|растительность на лице
+sylwetka (figura)|фигура
+fryzura|причёска
+wygląd|внешность
+kobieta|женщина
+mężczyzna|мужчина
+bliźniaczka, bliźniak|близняшка, близнец
+emeryt|пенсионер
+szatyn, szatynka|шатен, шатенка
+blondyn, blondynka|блондин, блондинка
+brunetka|брюнетка
+ładny|симпатичный, красивый
+piękny|прекрасный, красивый
+przystojny|красивый (о мужчине)
+brzydki|некрасивый, безобразный
+elegancki|элегантный
+młody|молодой
+niemłody|немолодой
+starszy|пожилой, старше
+dorosły|взрослый
+dziecięcy|детский
+niski|низкий
+średni|средний
+wysoki|высокий
+drobny|миниатюрный, мелкий
+szczupły|стройный, худощавый
+chudy|худой
+tęgi|полный, плотный
+otyły|тучный
+wysportowany|спортивный, подтянутый
+prosty|прямой
+kręcony|кудрявый, вьющийся
+jasny|светлый
+ciemny|тёмный
+siwy|седой
+rudy|рыжий
+łysy|лысый
+brodaty|бородатый
+wąsaty|усатый
+ogolony|выбритый
+wąski|узкий
+szeroki|широкий
+gęsty|густой
+sztuczny|искусственный
+naturalny|натуральный
+prawdziwy|настоящий
+farbowany|крашеный
+malowany|накрашенный
+lakierowany|покрытый лаком
+wesoły|весёлый
+poważny|серьёзный
+smutny|грустный
+zmęczony|уставший
+zadowolony|довольный
+zdenerwowany|нервничающий, раздражённый
+senny|сонный
+chory|больной
+zdrowy|здоровый
+średniego wzrostu|среднего роста
+w średnim wieku|средних лет
+wygląda na zmęczonego|выглядит уставшим
+wygląda młodo|выглядит молодо
+dbać o wygląd|заботиться о внешности
+czesać włosy|расчёсывать волосы
+lakierować paznokcie|красить ногти лаком
+malować usta|красить губы
+farbować włosy|красить волосы
+nosić grzywkę|носить чёлку
+nosić brodę|носить бороду
+ma okrągłą twarz|у него (неё) круглое лицо
+ma wysokie czoło|у него (неё) высокий лоб
+ma gęste brwi|у него (неё) густые брови
+ma piwne oczy|у него (неё) карие глаза
+poczucie humoru|чувство юмора
+starość nie radość|старость не радость`);
+var r2=D(`szminka|помада
+gąbka|губка
+kosmetyczka|косметичка
+lustro, lusterko|зеркало, зеркальце
+mydło, mydełko|мыло
+żel pod prysznic|гель для душа
+ręcznik, ręczniczek|полотенце
+pilnik, pilniczek|пилка, пилочка
+szampon|шампунь
+grzebień|расчёска, гребень
+szczotka do włosów|щётка для волос
+szczoteczka do zębów|зубная щётка
+obcinacz do paznokci|книпсер для ногтей
+nożyczki do paznokci|маникюрные ножницы
+chusteczki|салфетки, платочки
+waciki kosmetyczne|ватные диски
+patyczki do uszu|ватные палочки
+tonik do twarzy|тоник для лица
+kredka do brwi|карандаш для бровей
+pędzelek do brwi|кисточка для бровей
+cienie do powiek|тени для век
+tusz do rzęs|тушь для ресниц
+kredka do ust|карандаш для губ
+farba do włosów|краска для волос
+róż do policzków|румяна
+lakier do paznokci|лак для ногтей
+pasta do zębów|зубная паста
+krem do rąk|крем для рук
+płyn do kąpieli|жидкость для ванны
+maszynka do golenia|бритвенный станок
+pianka do golenia|пена для бритья
+żel do golenia|гель для бритья
+olejek do opalania|масло для загара
+perfumy|духи
+krem na zmarszczki|крем от морщин
+fryzjer|парикмахер
+manicurzystka|мастер маникюра
+salon urody|салон красоты
+drogeria|магазин косметики и бытовой химии
+siłownia|тренажёрный зал
+makijaż|макияж
+uroda|красота
+kondycja|физическая форма
+gładka skóra|гладкая кожа
+czesać się|причёсываться
+wycierać się|вытираться
+myć zęby|чистить зубы
+obcinać paznokcie|стричь ногти
+smarować ciało kremem|мазать тело кремом
+pudrować|пудрить
+pogrubiać rzęsy|утолщать ресницы
+mrużyć oczy|щурить глаза
+marszczyć brwi|хмурить брови
+regulować brwi|корректировать брови
+zatykać nos|зажимать нос
+wybielać zęby|отбеливать зубы
+układać włosy|укладывать волосы
+suszyć|сушить`);
+var r3=D(`pasek|ремень
+żakiet|жакет
+kapelusz|шляпа
+zegarek|наручные часы
+mucha, muszka|галстук-бабочка
+bluzka|блузка
+koszula|рубашка
+apaszka|шейный платок
+poszetka|нагрудный платок
+torebka|сумочка
+marynarka|пиджак
+kamizelka|жилет
+spódnica|юбка
+okulary|очки
+spodnie|брюки
+krawat|галстук
+garnitur|костюм (мужской)
+sukienka|платье
+kurtka|куртка
+płaszcz|пальто
+futro|шуба
+kożuch|дублёнка
+dres|спортивный костюм
+szlafrok|халат
+kombinezon|комбинезон
+bluza|толстовка
+koszulka|футболка
+sweter|свитер
+golf|водолазка
+czapka|шапка
+czapka z daszkiem|кепка
+kaptur|капюшон
+szalik|шарф
+rękawiczki|перчатки
+fartuch|фартук
+stanik|бюстгальтер
+majtki|трусы
+kostium kąpielowy|купальник
+rajstopy|колготки
+podkolanówki|гольфы
+pończochy|чулки
+podkoszulek|майка
+bokserki|боксёры
+kąpielówki|плавки
+skarpetki|носки
+wsuwka|невидимка
+spinka|заколка
+opaska|ободок
+gumka do włosów|резинка для волос
+łańcuszek|цепочка
+wisiorek|кулон
+naszyjnik|ожерелье
+korale|бусы
+pierścionek|кольцо
+bransoletka|браслет
+obrączka|обручальное кольцо
+broszka|брошь
+kolczyki|серьги
+szpilki|туфли на шпильке
+lakierki|лаковые туфли
+kozaki|сапоги
+botki|ботильоны
+klapki|шлёпанцы
+tenisówki|кеды
+trampki|тряпичные кеды
+kalosze|резиновые сапоги
+kapcie|тапочки
+sznurówki|шнурки
+guzik|пуговица
+zamek|молния
+kieszeń|карман
+rękaw|рукав
+nogawki|штанины
+kołnierzyk|воротничок
+falbany|оборки
+pompon|помпон
+portfel|кошелёк
+laska|трость
+przypinka|значок
+jedwab, jedwabny|шёлк, шёлковый
+wełna, wełniany|шерсть, шерстяной
+bawełna, bawełniany|хлопок, хлопковый
+skóra, skórzany|кожа, кожаный
+len, lniany|лён, льняной
+złoto, złoty|золото, золотой
+srebro, srebrny|серебро, серебряный
+w prążki|в тонкую полоску
+w paski|в полоску
+w kropki, w grochy|в горошек
+w kwiaty|в цветочек
+w kratę|в клетку
+kolor|цвет
+rozmiar|размер
+wzór|узор
+materiał|материал
+styl|стиль
+cena|цена
+biżuteria|украшения
+bielizna|бельё
+odzież|одежда
+obuwie|обувь
+przymierzalnia|примерочная
+przymierzać|примерять
+zakładać|надевать
+zdejmować|снимать
+mieć na sobie, nosić|быть одетым в, носить
+zapinać, rozpinać|застёгивать, расстёгивать
+prasować|гладить
+sprzedawca, sprzedawczyni|продавец, продавщица
+klient, klientka|клиент, клиентка
+Czym mogę służyć?|Чем могу помочь?
+Czy jest mniejszy rozmiar?|Есть размер поменьше?
+Czy mogę to przymierzyć?|Можно это примерить?
+za drogo|слишком дорого
+Nie stać mnie na to.|Мне это не по карману.
+w sam raz|как раз, впору
+za ciasny|слишком тесный`);
+var r4=D(`zainteresowania|интересы, увлечения
+hobby|хобби
+w wolnym czasie|в свободное время
+słuchać muzyki|слушать музыку
+oglądać telewizję|смотреть телевизор
+uprawiać jogę|заниматься йогой
+uprawiać sport|заниматься спортом
+grać w piłkę|играть в мяч
+chodzić na siłownię|ходить в тренажёрный зал
+grać na gitarze|играть на гитаре
+jeździć na rowerze|ездить на велосипеде
+pływać żaglówką|плавать на парусной лодке
+podróżować po Europie|путешествовать по Европе
+pracować w ogrodzie|работать в саду
+jeździć na łyżwach|кататься на коньках
+jeździć na nartach|кататься на лыжах
+zbierać znaczki|собирать марки
+zwiedzać zabytki|осматривать достопримечательности
+rozwiązywać krzyżówki|разгадывать кроссворды
+układać puzzle|собирать пазлы
+uczyć się języków obcych|изучать иностранные языки
+śpiewać|петь
+gotować|готовить
+rysować|рисовать
+malować|писать красками
+tańczyć|танцевать
+biegać|бегать
+czytać książki|читать книги
+chodzić do kina|ходить в кино
+robić zdjęcia|фотографировать
+chodzić po górach|ходить по горам
+pływać kajakiem|плавать на байдарке
+grać w szachy|играть в шахматы
+gry planszowe|настольные игры
+spędzać czas|проводить время
+pamiątki|сувениры
+znaczki|марки
+siatkówka|волейбол
+koszykówka|баскетбол
+piłka nożna|футбол
+sporty zimowe|зимние виды спорта
+sporty drużynowe|командные виды спорта
+sporty walki|единоборства
+interesować się (czym?)|интересоваться (чем-л.)
+lubić, uwielbiać|любить, обожать
+moda|мода
+sztuka|искусство
+historia|история
+geografia|география
+literatura|литература
+malarstwo|живопись
+prawo|право
+filozofia|философия
+medycyna|медицина
+matematyka|математика
+szachy|шахматы
+kultura|культура
+kucharz|повар
+lekarz|врач
+przewodnik|гид, экскурсовод
+fotograf|фотограф
+scenarzysta|сценарист
+konduktor|кондуктор, проводник
+lekkoatletka|лёгкоатлетка
+piosenkarka|певица
+sędzia|судья
+dziennikarka|журналистка
+tłumaczka|переводчица
+aktor, aktorka|актёр, актриса
+pisarz, pisarka|писатель, писательница
+piłkarz, piłkarka|футболист, футболистка
+Chcę być kucharzem.|Я хочу быть поваром.`);
+var r5=D(`charakter|характер
+cecha charakteru|черта характера
+zalety|достоинства
+wady|недостатки
+punktualny|пунктуальный
+szczery|искренний
+uprzejmy|вежливый, любезный
+odważny|смелый
+towarzyski|общительный
+oszczędny|экономный
+wrażliwy|чувствительный
+cierpliwy|терпеливый
+pomysłowy|изобретательный
+zdecydowany|решительный
+odpowiedzialny|ответственный
+zaradny|находчивый, умеющий справляться
+sprytny|смышлёный, хитрый
+hojny|щедрый
+życzliwy|доброжелательный
+obowiązkowy|обязательный, добросовестный
+pracowity|трудолюбивый
+uczciwy|честный
+kulturalny|воспитанный
+otwarty|открытый
+skromny|скромный
+pewny siebie|уверенный в себе
+ciekawy świata|любознательный
+spokojny|спокойный
+prawdomówny|правдивый
+rozmowny|разговорчивый
+zabawny|забавный
+komunikatywny|коммуникабельный
+ambitny|амбициозный
+zdolny|способный
+uparty|упрямый
+nerwowy|нервный
+skąpy|скупой
+naiwny|наивный
+leniwy|ленивый
+gadatliwy|болтливый
+arogancki|высокомерный, нахальный
+lekkomyślny|легкомысленный
+zarozumiały|самодовольный, заносчивый
+niezdecydowany|нерешительный
+chciwy|жадный
+łatwowierny|доверчивый
+nieufny|недоверчивый
+podejrzliwy|подозрительный
+fałszywy|лживый, фальшивый
+dwulicowy|двуличный
+nieszczery|неискренний
+nieuprzejmy|невежливый
+małomówny|немногословный
+strachliwy|боязливый
+zamknięty w sobie|замкнутый
+nieśmiały|застенчивый
+niecierpliwy|нетерпеливый
+dotrzymywać słowa|держать слово
+dotrzymywać terminów|соблюдать сроки
+panować nad emocjami|владеть эмоциями
+patrzeć na innych z góry|смотреть на других свысока
+wolontariusz, wolontariuszka|волонтёр, волонтёрка
+list motywacyjny|мотивационное письмо
+zgłosić kandydaturę|выдвинуть кандидатуру
+dobre serce|доброе сердце
+Trzymam kciuki!|Держу кулачки!
+Praca nie zając. Nie ucieknie.|Работа не волк, в лес не убежит.
+Czas to pieniądz!|Время — деньги!
+Nie znoszę, gdy…|Терпеть не могу, когда…`);
+var r6=D(`rodzina|семья
+rodzice|родители
+mama, matka|мама, мать
+tata, ojciec|папа, отец
+syn|сын
+córka|дочь
+dzieci|дети
+brat|брат
+siostra|сестра
+rodzeństwo|братья и сёстры
+jedynak|единственный ребёнок
+dziadek|дедушка
+babcia|бабушка
+dziadkowie|бабушка и дедушка
+wnuk|внук
+wnuczka|внучка
+prawnuk|правнук
+prawnuczka|правнучка
+wujek|дядя
+ciocia|тётя
+bratanek|племянник (сын брата)
+bratanica|племянница (дочь брата)
+siostrzeniec|племянник (сын сестры)
+siostrzenica|племянница (дочь сестры)
+mąż|муж
+żona|жена
+małżeństwo|брак, супружеская пара
+teść|тесть, свёкор
+teściowa|тёща, свекровь
+teściowie|родители супруга (супруги)
+zięć|зять
+synowa|невестка (жена сына)
+szwagier|шурин, зять, свояк
+bratowa|жена брата
+narzeczony|жених
+narzeczona|невеста
+kawaler|холостяк
+panna|незамужняя женщина
+wdowiec|вдовец
+wdowa|вдова
+rozwiedziony|разведённый
+krewny|родственник
+przodek|предок
+drzewo genealogiczne|генеалогическое древо
+więzy krwi|кровные узы
+ślub|бракосочетание
+wesele|свадебное торжество
+oświadczyny|предложение руки и сердца
+zakochać się|влюбиться
+poprosić o rękę|просить руки
+przyjąć oświadczyny|принять предложение
+brać ślub|вступать в брак
+założyć rodzinę|создать семью
+wychowywać dziecko|воспитывать ребёнка
+zamieszkać pod jednym dachem|поселиться под одной крышей
+skończyć studia|закончить учёбу
+zapisać się na kurs językowy|записаться на языковые курсы
+spędzać urlop|проводить отпуск
+urodzić się|родиться
+opiekować się|заботиться, ухаживать
+przytulać|обнимать
+karmić piersią|кормить грудью
+sympatyczny|симпатичный, приятный
+samotny|одинокий
+zakochany|влюблённый
+rozwód|развод
+kryzys małżeński|кризис в браке
+konflikt pokoleń|конфликт поколений
+głowa rodziny|глава семьи
+utrzymywać rodzinę|содержать семью
+tradycyjny model rodziny|традиционная модель семьи
+partnerski model rodziny|партнёрская модель семьи
+rodzina wielodzietna|многодетная семья
+rodzina dwupokoleniowa|семья из двух поколений
+rodzina wielopokoleniowa|семья из нескольких поколений
+macierzyństwo|материнство
+czułość|нежность`);
+var r7=D(`sklep|магазин
+kwiaciarnia|цветочный магазин
+księgarnia|книжный магазин
+sklep papierniczy|магазин канцтоваров
+cukiernia|кондитерская
+piekarnia|пекарня, булочная
+sklep spożywczy|продуктовый магазин
+apteka|аптека
+sklep z zabawkami|магазин игрушек
+sklep z pamiątkami|магазин сувениров
+sklep obuwniczy|обувной магазин
+sklep odzieżowy|магазин одежды
+galanteria|галантерея (сумки, аксессуары)
+salon jubilerski|ювелирный салон
+salon optyczny|салон оптики
+sklep meblowy|мебельный магазин
+sklep AGD|магазин бытовой техники
+sklep sportowy|спортивный магазин
+sklep ogrodniczy|садовый магазин
+galeria handlowa|торговый центр
+targ|рынок
+ślusarz|слесарь
+stolarz|столяр
+szewc|сапожник
+krawiec|портной
+hydraulik|сантехник
+poczta|почта
+pralnia|прачечная, химчистка
+myjnia|автомойка
+punkt ksero|копировальный центр
+warsztat samochodowy|автомастерская
+nauka jazdy|автошкола
+naprawa telefonów|ремонт телефонов
+biuro nieruchomości|агентство недвижимости
+kantor wymiany walut|обменный пункт
+bukiet|букет
+lekarstwo|лекарство
+plaster|пластырь
+bandaż|бинт
+recepta, na receptę|рецепт, по рецепту
+pączek|пончик
+drożdżówka|сдобная булочка
+pieczywo|хлебобулочные изделия
+nabiał|молочные продукты
+napoje|напитки
+słodycze|сладости
+klocki|кубики, конструктор
+lalka|кукла
+maskotka|мягкая игрушка
+układanka|пазл
+artykuły biurowe|канцелярские товары
+artykuły higieniczne|гигиенические товары
+koperta|конверт
+znaczek pocztowy|почтовая марка
+dorobić klucze|сделать дубликат ключей
+zreperować buty|починить обувь
+zamówić garnitur u krawca|заказать костюм у портного
+wydawać pieniądze|тратить деньги
+inwestować|инвестировать
+liczyć pieniądze|считать деньги
+tracić|терять
+oszczędzać|экономить, копить
+zakupy online|покупки онлайн
+Poproszę…|Мне, пожалуйста…
+dwadzieścia deka szynki|двести граммов ветчины
+Proszę patrzeć prosto!|Смотрите прямо, пожалуйста!
+Gdzie jest przymierzalnia?|Где примерочная?
+Czy to lekarstwo jest na receptę?|Это лекарство по рецепту?
+Mam problem z samochodem.|У меня проблема с машиной.`);
+var r8=D(`chleb|хлеб
+rogal, rogalik|рогалик
+bułka|булочка
+bagietka|багет
+chałka|плетёная сдобная булка (хала)
+arbuz|арбуз
+pomarańcza|апельсин
+brzoskwinia|персик
+śliwka|слива
+winogrona|виноград
+cytryna|лимон
+jabłko|яблоко
+truskawki|клубника
+owoce|фрукты
+mleko|молоко
+śmietana|сметана
+masło|сливочное масло
+ser biały, twaróg|творог
+ser żółty|твёрдый сыр
+jogurt|йогурт
+kefir|кефир
+kalafior|цветная капуста
+dynia|тыква
+czosnek|чеснок
+marchew, marchewka|морковь
+sałata|салат (листовой)
+kapusta|капуста
+cebula|лук
+pomidor|помидор
+ogórek|огурец
+ziemniaki|картофель
+warzywa|овощи
+grzyby|грибы
+pieczarki|шампиньоны
+kiełbasa|колбаса
+szynka|ветчина
+parówka|сосиска
+polędwica|вырезка, нежирная ветчина
+bekon|бекон
+wędliny|колбасные изделия
+cukierek|конфета
+lizak|леденец
+baton|батончик
+czekolada|шоколад
+ciastko|печенье
+sernik|творожный пирог, чизкейк
+szarlotka|яблочный пирог
+tort|торт
+kremówka|кремовое пирожное
+naleśnik|блин
+ciasto|пирог, тесто
+słony|солёный
+słodki|сладкий
+kwaśny|кислый
+gorzki|горький
+pęto kiełbasy|кольцо колбасы
+kostka masła|брусок масла
+tabliczka czekolady|плитка шоколада
+plasterek|ломтик
+bochenek chleba|буханка хлеба
+kromka|ломоть хлеба
+główka sałaty|кочан салата
+ząbek czosnku|зубчик чеснока
+kubek|стаканчик, кружка
+worek|мешок
+słoik|стеклянная банка
+karton|картонная упаковка
+puszka|консервная банка
+paczka|пачка
+pudełko|коробка
+butelka|бутылка
+mąka|мука
+olej|растительное масло
+miód|мёд
+dżem|джем
+groszek|горошек
+kukurydza|кукуруза
+ryż|рис
+makaron|макароны
+cukier|сахар
+sól|соль
+pieprz|перец
+przyprawy|специи
+bazylia|базилик
+śniadanie|завтрак
+obiad|обед
+kolacja|ужин
+posiłek|приём пищи
+potrawa, danie|блюдо
+deser|десерт
+zupa|суп
+rosół|куриный бульон
+żurek|журек (кислый суп на закваске)
+barszcz|борщ
+gołąbki|голубцы
+pierogi|вареники, пироги
+bigos|бигос (тушёная капуста с мясом)
+kotlet schabowy|свиная отбивная
+kotlet mielony|рубленая котлета
+surówka|салат из сырых овощей
+mizeria|салат из огурцов со сметаной
+jajecznica|яичница-болтунья
+jajka sadzone|глазунья
+kurczak|курица
+kaczka|утка
+indyk|индейка
+drób|птица (мясо)
+wieprzowina|свинина
+wołowina|говядина
+baranina|баранина
+ryby|рыба
+karp|карп
+śledź|сельдь
+łosoś|лосось
+owoce morza|морепродукты
+krewetki|креветки
+gotować|варить, готовить
+smażyć|жарить
+piec|печь
+łyżka|ложка
+łyżeczka|чайная ложка
+nóż|нож
+widelec|вилка
+pałeczki|палочки (для еды)
+rondel|кастрюлька, ковшик
+garnek|кастрюля
+czajnik|чайник
+brytfanna|утятница
+patelnia|сковорода
+talerz płytki|мелкая тарелка
+talerz głęboki|глубокая тарелка
+dzbanek|кувшин
+półmisek|блюдо для подачи
+miska|миска
+waza|супница
+kufel|пивная кружка
+kieliszek|рюмка, бокал
+pucharek|креманка
+szklanka|стакан
+filiżanka|чашка
+obrus|скатерть
+szwedzki stół|шведский стол
+karta dań|меню
+kelner, kelnerka|официант, официантка
+napiwek|чаевые
+rachunek|счёт
+zamówienie|заказ
+Czy są wolne stoliki?|Есть свободные столики?
+Słucham, co podać?|Слушаю вас, что подать?
+Co pan(i) poleca?|Что вы порекомендуете?
+Czy można prosić rachunek?|Можно счёт?
+Reszta dla pana.|Сдачи не надо.
+Czy to danie jest bez glutenu?|Это блюдо без глютена?`);
+var r9=D(`przedpokój|прихожая
+sypialnia|спальня
+gabinet|кабинет
+kuchnia|кухня
+salon|гостиная
+łazienka|ванная комната
+toaleta|туалет
+strych|чердак
+piwnica|подвал
+balkon|балкон
+korytarz|коридор
+winda|лифт
+piętro|этаж
+parter|первый этаж
+kawalerka|однокомнатная квартира
+blok|многоквартирный дом
+mieszkanie|квартира
+dach|крыша
+komin|дымовая труба
+sufit|потолок
+podłoga|пол
+ściana|стена
+okno|окно
+drzwi|дверь
+klamka|дверная ручка
+wizjer|глазок (в двери)
+wieszak|вешалка
+chodnik (dywanik)|ковровая дорожка
+szafa|шкаф
+półka|полка
+łóżko|кровать
+poduszka|подушка
+komoda|комод
+obraz|картина
+budzik|будильник
+lampka|настольная лампа
+zasłony|шторы
+firanki|тюль
+rolety|рулонные шторы
+biurko|письменный стол
+szuflada|ящик
+krzesło|стул
+regał|стеллаж
+zegar|часы (настенные)
+przybornik|подставка для ручек
+zdjęcie|фотография
+kosz|корзина
+kran|кран
+kurek|вентиль
+zlew|кухонная раковина
+piekarnik|духовка
+kuchenka|плита
+okap|вытяжка
+zmywarka|посудомоечная машина
+lodówka|холодильник
+zamrażarka|морозильник
+fotel|кресло
+kanapa|диван
+stolik|столик
+kominek|камин
+żyrandol|люстра
+dywan|ковёр
+wazon|ваза
+doniczka|цветочный горшок
+umywalka|умывальник
+prysznic|душ
+dywanik|коврик
+wanna|ванна
+pralka|стиральная машина
+sedes|унитаз
+drabina|стремянка
+skrzynia|сундук
+żarówka|лампочка
+okienko|окошко
+schody|лестница
+poręcz|перила
+pudło|коробка
+żelazko|утюг
+mikrofalówka|микроволновка
+drukarka|принтер
+odkurzacz|пылесос
+maszyna do pisania|печатная машинка
+wiklinowy|плетёный
+mieszkać|жить, проживать
+przeprowadzić się|переехать
+na wprost|прямо напротив
+naprzeciwko|напротив
+obok|рядом с
+blisko|близко от
+wokół|вокруг
+nad|над
+pod|под
+przed|перед
+za|за
+między|между
+przy|возле, у
+po lewej stronie|с левой стороны
+po prawej stronie|с правой стороны
+w rogu|в углу`);
+var r10=D(`skrzyżowanie|перекрёсток
+rondo|кольцевая развязка
+chodnik|тротуар
+jezdnia|проезжая часть
+drogowskaz|дорожный указатель
+kładka|пешеходный мостик
+ścieżka rowerowa|велодорожка
+pasy, przejście dla pieszych|пешеходный переход
+stacja benzynowa|заправочная станция
+światła|светофор
+szlaban|шлагбаум
+przystanek|остановка
+dworzec autobusowy|автовокзал
+dworzec kolejowy|железнодорожный вокзал
+lotnisko|аэропорт
+rynek (plac)|рыночная площадь
+ratusz|ратуша
+pomnik|памятник
+kościół|костёл, церковь
+dzwonnica|колокольня
+kamienica|городской многоквартирный дом (старый)
+pałac|дворец
+zamek|замок
+wieża|башня
+brama|ворота (городские)
+fontanna|фонтан
+studnia|колодец
+mostek|мостик
+wieżowiec|высотка
+ławka|скамейка
+latarnia|уличный фонарь
+plac zabaw|детская площадка
+huśtawka|качели
+zjeżdżalnia|горка
+żłobek|ясли
+przedszkole|детский сад
+szkoła|школа
+boisko|спортивная площадка
+basen|бассейн
+szpital|больница
+karetka|скорая помощь
+przychodnia|поликлиника
+komisariat|отделение полиции
+osiedle|жилой район
+centrum|центр
+park|парк
+kino|кино, кинотеатр
+teatr|театр
+biblioteka|библиотека
+muzeum|музей
+bank|банк
+hotel|гостиница
+uniwersytet|университет
+ulica|улица
+plac|площадь
+most|мост
+rzeka|река
+mieszkaniec|житель
+pieszy|пешеход
+kierowca|водитель
+pasażer|пассажир
+zabytek|памятник архитектуры
+ruch uliczny|уличное движение
+korek|пробка
+hałas|шум
+smog|смог
+eksponaty|экспонаты
+wystawa|выставка
+wycieczka|экскурсия
+trasa|маршрут
+okolica|окрестности
+panorama miasta|панорама города
+skręcić w lewo|повернуть налево
+skręcić w prawo|повернуть направо
+iść prosto|идти прямо
+przejść przez bramę|пройти через ворота
+dojść na piechotę|дойти пешком
+Jak dojść do…?|Как дойти до…?
+Idziemy do banku.|Мы идём в банк.
+Idziemy na dworzec.|Мы идём на вокзал.`);
+var r11=D(`wieś|деревня
+pole|поле
+las|лес
+łąka|луг
+ogród|сад, огород
+sad|фруктовый сад
+staw|пруд
+pastwisko|пастбище
+płot|забор
+strach na wróble|пугало
+żyto|рожь
+pszenica|пшеница
+owies|овёс
+jęczmień|ячмень
+zboże|зерновые
+jabłoń|яблоня
+grusza|груша (дерево)
+śliwa|слива (дерево)
+wiśnia|вишня
+winorośl|виноградная лоза
+grabie|грабли
+widły|вилы
+łopata|лопата
+motyka|мотыга
+wąż ogrodowy|садовый шланг
+kombajn|комбайн
+traktor, ciągnik|трактор
+przyczepa|прицеп
+kosiarka|газонокосилка
+osa|оса
+ćma|ночная бабочка, моль
+mucha|муха
+ważka|стрекоза
+pszczoła|пчела
+mrówka|муравей
+biedronka|божья коровка
+komar|комар
+motyl|бабочка
+pająk|паук
+konik polny|кузнечик
+sikorka|синица
+mewa|чайка
+sowa|сова
+wrona|ворона
+jaskółka|ласточка
+wróbel|воробей
+gołąb|голубь
+orzeł|орёл
+bocian|аист
+słowik|соловей
+łabędź|лебедь
+lis|лиса
+jeż|ёж
+wąż|змея
+wilk|волк
+dzik|кабан
+żubr|зубр
+zając|заяц
+jeleń|олень
+niedźwiedź|медведь
+sarna|косуля
+wiewiórka|белка
+ogon|хвост
+dziób|клюв
+pazur, szpon|коготь
+łapa|лапа
+skrzydło|крыло
+pióro|перо
+gniazdo|гнездо
+łeb|голова (животного)
+grzbiet|спина (животного)
+sierść|шерсть
+grzywa|грива
+róg, rogi|рог, рога
+kopyto|копыто
+pies|собака
+kot|кот
+żółw|черепаха
+chomik|хомяк
+świnka morska|морская свинка
+rybka|рыбка
+papuga|попугай
+krowa|корова
+byk|бык
+koń|лошадь
+osioł|осёл
+królik|кролик
+owca|овца
+baran|баран
+koza|коза
+świnia|свинья
+kura|курица
+kogut|петух
+kurczak|цыплёнок
+gęś|гусь
+ul|улей
+kurnik|курятник
+chlew|свинарник
+buda|будка
+obora|коровник
+stajnia|конюшня
+stodoła|амбар, сарай
+szczenię|щенок
+kocię|котёнок
+cielę|телёнок
+źrebię|жеребёнок
+prosię|поросёнок
+jagnię|ягнёнок
+kurczę|цыплёнок (птенец)
+klacz|кобыла
+suka|сука
+wieprz|боров
+rolnik, rolniczka|фермер, земледелец
+gospodarstwo|хозяйство, ферма
+agroturystyka|агротуризм
+uprawiać ziemię|обрабатывать землю
+hodować zwierzęta|разводить животных
+kosić trawę|косить траву
+zrywać owoce|собирать фрукты
+chwasty|сорняки
+siano|сено
+ognisko|костёр
+urządzać ognisko|разводить костёр
+zapraszać turystów|приглашать туристов
+rezerwować nocleg|бронировать ночлег`);
+var r12=D(`pogoda|погода
+słońce|солнце
+księżyc|луна
+gwiazda|звезда
+chmura|туча, облако
+zachmurzenie|облачность
+wiatr|ветер
+wichura|сильный ветер, буря
+huragan|ураган
+mgła|туман
+tęcza|радуга
+rosa|роса
+błoto|грязь
+kałuża|лужа
+powódź|наводнение
+mżawka|морось
+deszcz|дождь
+ulewa|ливень
+grad|град
+burza|гроза
+grzmot|гром
+piorun|удар молнии
+błyskawica|молния (вспышка)
+śnieg|снег
+zaspa|сугроб
+ślizgawka|гололёд
+szron|иней
+sopel, sople|сосулька, сосульки
+bałwan|снеговик
+śnieżka|снежок
+mróz|мороз
+odwilż|оттепель
+upał|жара
+temperatura|температура
+ciśnienie|давление
+stopień, stopnie|градус, градусы
+prognoza pogody|прогноз погоды
+klimat|климат
+aura|погода (книжн.)
+pogodny|ясный
+bezchmurny|безоблачный
+zachmurzony|облачный
+pochmurny|пасмурный
+słoneczny|солнечный
+deszczowy|дождливый
+burzowy|грозовой
+upalny|жаркий
+wietrzny|ветреный
+mglisty|туманный
+mroźny|морозный
+śnieżny|снежный
+ulewny|проливной
+ślisko|скользко
+mokro|мокро
+sucho|сухо
+chłodno|прохладно
+zimno|холодно
+gorąco|жарко
+ciepło|тепло
+przelotny deszcz|кратковременный дождь
+porywisty wiatr|порывистый ветер
+łagodna zima|мягкая зима
+surowa zima|суровая зима
+Świeci słońce.|Светит солнце.
+Wieje wiatr.|Дует ветер.
+Pada deszcz.|Идёт дождь.
+Pada śnieg.|Идёт снег.
+Deszcz leje.|Дождь льёт как из ведра.
+Śnieg topnieje.|Снег тает.
+Słońce grzeje.|Солнце греет.
+Temperatura spada.|Температура падает.
+Temperatura wzrasta.|Температура растёт.
+powyżej zera|выше нуля
+poniżej zera|ниже нуля
+minus pięć stopni|минус пять градусов`);
+var r13=D(`senny|сонный
+głodny|голодный
+spragniony|испытывающий жажду
+blady|бледный
+zmęczony|уставший
+chory|больной
+przeziębiony|простуженный
+katar|насморк
+kaszel|кашель
+chrypka|хрипота
+czkawka|икота
+wysypka|сыпь
+gorączka|жар, температура
+biegunka|понос
+skurcz|судорога, спазм
+dreszcze|озноб
+duszności|одышка, удушье
+nudności, mdłości|тошнота
+wymioty|рвота
+zawroty głowy|головокружение
+kichać|чихать
+kaszleć|кашлять
+łzawienie|слезотечение
+Jest mi zimno.|Мне холодно.
+Jest mi gorąco.|Мне жарко.
+Jest mi duszno.|Мне душно.
+Jest mi słabo.|Мне плохо (слабость).
+Jest mi niedobrze.|Меня тошнит.
+Chce mi się pić.|Мне хочется пить.
+Chce mi się spać.|Мне хочется спать.
+Boli mnie głowa.|У меня болит голова.
+Bolą mnie plecy.|У меня болит спина.
+boli|болит
+swędzi|чешется
+piecze|жжёт
+kręgosłup|позвоночник
+kostka|лодыжка
+staw, stawy|сустав, суставы
+grypa|грипп
+astma|астма
+anemia|анемия
+alergia, uczulenie|аллергия
+przeziębienie|простуда
+zmęczenie, przemęczenie|усталость, переутомление
+objawy|симптомы
+diagnoza|диагноз
+badanie|обследование
+pacjent, pacjentka|пациент, пациентка
+poczekalnia|зал ожидания
+gabinet lekarski|кабинет врача
+zwolnienie lekarskie|больничный лист
+aspiryna|аспирин
+leki przeciwbólowe|обезболивающие
+chorować, zachorować|болеть, заболеть
+tracić apetyt|терять аппетит
+mierzyć temperaturę|измерять температуру
+umówić się na wizytę|записаться на приём
+badać, zbadać|обследовать
+postawić diagnozę|поставить диагноз
+wypisać receptę|выписать рецепт
+wziąć leki|принять лекарства
+wracać do zdrowia|идти на поправку
+pryszcz|прыщ
+odcisk|мозоль
+siniak|синяк
+obrzęk, opuchlizna|отёк, опухоль
+oparzenie|ожог
+bąbel, pęcherz|волдырь, пузырь
+skaleczenie|порез
+rana|рана
+blizna|шрам
+igła|игла
+strzykawka|шприц
+zastrzyk|укол
+szczepionka|вакцина
+płyn do dezynfekcji|дезинфицирующее средство
+opatrunek|повязка
+gips|гипс
+okład|компресс
+kroplówka|капельница
+koc ratunkowy|спасательное одеяло
+uraz|травма
+trauma|психологическая травма
+stłuczenie|ушиб
+skręcenie|растяжение
+zwichnięcie|вывих
+złamanie|перелом
+pogotowie|скорая помощь
+Do wesela się zagoi.|До свадьбы заживёт.
+alergolog|аллерголог
+chirurg|хирург
+dermatolog|дерматолог
+dietetyk|диетолог
+ginekolog|гинеколог
+internista|терапевт
+kardiolog|кардиолог
+logopeda|логопед
+neurolog|невролог
+okulista|окулист
+ortopeda|ортопед
+psycholog|психолог
+pediatra|педиатр
+dentysta|стоматолог`);
+var r14=D(`mecz|матч
+piłka|мяч
+bramka|ворота
+słupek|штанга (ворот)
+poprzeczka|перекладина
+tablica wyników|табло
+kosz|корзина (баскетбол)
+kort|корт
+siatka|сетка
+rakieta|ракетка
+piłeczka|мячик
+lotka|воланчик
+lodowisko|каток
+kij|клюшка, палка
+krążek|шайба
+kask|шлем
+ochraniacz|защита, щитки
+faul|фол
+kontuzja|спортивная травма
+gwizdek|свисток
+żółta kartka|жёлтая карточка
+czerwona kartka|красная карточка
+bieżnia|беговая дорожка
+płotek|барьер
+meta|финиш
+czepek|шапочка для плавания
+trampolina|трамплин
+drabinka|лесенка
+żagiel|парус
+żaglówka|парусная лодка
+kajak|байдарка
+kamizelka ratunkowa|спасательный жилет
+wiosło|весло
+pływanie|плавание
+kajakarstwo|гребля на байдарках
+żeglarstwo|парусный спорт
+kolarstwo|велоспорт
+wyścigi samochodowe|автогонки
+jeździectwo|конный спорт
+tenis|теннис
+badminton|бадминтон
+biegi narciarskie|лыжные гонки
+skoki narciarskie|прыжки с трамплина
+narciarstwo zjazdowe|горнолыжный спорт
+łyżwiarstwo figurowe|фигурное катание
+łyżwiarstwo szybkie|конькобежный спорт
+saneczkarstwo|санный спорт
+bilard|бильярд
+warcaby|шашки
+rzutki|дартс
+kręgle|боулинг
+piłkarzyki|настольный футбол
+wynik, rezultat|результат
+wygrana|победа
+remis|ничья
+przegrana|поражение
+awans|повышение (в классе)
+spadek|вылет (из лиги)
+podium|пьедестал
+puchar|кубок
+medal|медаль
+złoty, srebrny, brązowy|золотой, серебряный, бронзовый
+lekkoatletyka|лёгкая атлетика
+chód|спортивная ходьба
+bieg przez płotki|бег с барьерами
+rzut młotem|метание молота
+rzut dyskiem|метание диска
+rzut oszczepem|метание копья
+pchnięcie kulą|толкание ядра
+skok w dal|прыжок в длину
+skok wzwyż|прыжок в высоту
+skok o tyczce|прыжок с шестом
+podnoszenie ciężarów|тяжёлая атлетика
+boks|бокс
+zapasy|борьба
+piłka ręczna|гандбол
+zawody|соревнования
+trener|тренер
+zawodnik, zawodniczka|спортсмен, спортсменка
+sportowiec|спортсмен
+mistrz, mistrzyni|чемпион, чемпионка
+zwycięzca|победитель
+widz|зритель
+kibic|болельщик
+siatkarz|волейболист
+koszykarz|баскетболист
+hokeista|хоккеист
+tenisista|теннисист
+szachista|шахматист
+bokser|боксёр
+biegacz|бегун
+pływak|пловец
+zapaśnik|борец
+kolarz|велогонщик
+narciarz|лыжник
+łyżwiarz|конькобежец, фигурист
+kajakarz|байдарочник
+żeglarz|яхтсмен
+trenować|тренироваться
+strzelić gola|забить гол
+wygrać|выиграть
+przegrać|проиграть
+remisować|сыграть вничью
+odporność|иммунитет
+samopoczucie|самочувствие
+nastrój|настроение
+wymówka|отговорка`);
+var r15=D(`pieszo|пешком
+autobusem|на автобусе
+pociągiem|на поезде
+samochodem|на машине
+autostopem|автостопом
+promem|на пароме
+balonem|на воздушном шаре
+samolotem|на самолёте
+za granicę|за границу
+w góry|в горы
+nad jezioro|на озеро
+nad morze|на море
+na wyspę|на остров
+na plażę|на пляж
+dookoła świata|вокруг света
+rozkład jazdy|расписание движения
+rozkład lotów|расписание рейсов
+tablica przyjazdów|табло прибытия
+tablica odjazdów|табло отправления
+tablica przylotów|табло прилётов
+tablica odlotów|табло вылетов
+peron|платформа
+stanowisko|стойка, пост
+odprawa (na lotnisku)|регистрация на рейс
+bagaż podręczny|ручная кладь
+karta pokładowa|посадочный талон
+kontrola bezpieczeństwa|досмотр безопасности
+hostel|хостел
+torba|сумка
+plecak|рюкзак
+walizka|чемодан
+namiot|палатка
+kupować, kupić bilet|покупать билет
+rezerwować miejsce|бронировать место
+pakować plecak|собирать рюкзак
+jechać na lotnisko|ехать в аэропорт
+przechodzić przez bramkę|проходить через рамку
+wsiadać do samolotu|садиться в самолёт
+wysiadać z samolotu|выходить из самолёта
+zajmować nocleg|размещаться на ночлег
+zapinać pasy|пристёгивать ремни
+zwiedzać zabytki|осматривать достопримечательности
+zdobywać szczyty|покорять вершины
+opalać się|загорать
+zbierać muszelki|собирать ракушки
+poznawać inne kraje|узнавать другие страны
+kupować z promocji|покупать по акции
+położenie|расположение
+usługi hotelowe|гостиничные услуги
+zakwaterowanie|размещение
+wyżywienie|питание
+wyposażenie|оснащение
+doba hotelowa|гостиничные сутки
+cisza nocna|ночной покой
+zameldowanie|заселение, регистрация
+wymeldowanie|выселение
+recepcja|стойка регистрации
+pokój jednoosobowy|одноместный номер
+pokój dwuosobowy|двухместный номер
+widok na morze|вид на море
+przesiadka|пересадка
+bilet w jedną stronę|билет в один конец
+bilet w obie strony|билет туда и обратно
+zniżka|скидка
+pierwsza klasa|первый класс
+opóźnienie|опоздание, задержка
+połączenie bezpośrednie|прямое сообщение
+połączenie z przesiadką|рейс с пересадкой
+miejsce przy oknie|место у окна
+miejsce przy korytarzu|место у прохода
+turysta|турист
+podróż|поездка, путешествие
+wakacje|каникулы, отпуск
+wypoczynek|отдых
+lądować|приземляться
+startować|взлетать`);
+var r16=D(`Nowy Rok|Новый год
+Święto Trzech Króli|Богоявление (день трёх королей)
+walentynki|День святого Валентина
+Dzień Kobiet|Международный женский день
+prima aprilis|День смеха (1 апреля)
+Wielkanoc|Пасха
+Święto Pracy|День труда
+Święto Konstytucji 3 Maja|День Конституции 3 мая
+Boże Ciało|Праздник Тела Христова
+Dzień Wszystkich Świętych|День всех святых
+Dzień Zaduszny|День поминовения умерших
+Święto Niepodległości|День независимости
+andrzejki|андрэйки (гадания в канун дня св. Андрея)
+mikołajki|день святого Николая (6 декабря)
+Wigilia|Сочельник (канун Рождества)
+Boże Narodzenie|Рождество
+sylwester|канун Нового года, Сильвестр
+imieniny|именины
+życzenia|пожелания, поздравления
+składać życzenia|поздравлять
+prezent|подарок
+Wesołych Świąt!|Весёлых праздников!
+Wszystkiego najlepszego!|Всего наилучшего!
+Sto lat!|Долгих лет жизни!
+cmentarz|кладбище
+grób|могила
+znicz|надгробная свеча
+wiązanka|букет, венок
+zapałki|спички
+zapalniczka|зажигалка
+krzyż|крест
+modlitwa|молитва
+zapalać znicz|зажигать свечу
+odwiedzać groby|навещать могилы
+kłaść kwiaty|класть цветы
+wróżba|гадание
+wróżyć|гадать
+opłatek|облатка (рождественская)
+dzielić się opłatkiem|делиться облаткой
+sianko|сено (под скатертью)
+stroik|рождественская композиция
+barszcz z uszkami|борщ с ушками
+potrawy rybne|рыбные блюда
+kompot z suszu|компот из сухофруктов
+makowiec|маковый рулет
+choinka|ёлка
+bombki|ёлочные шары
+łańcuch choinkowy|ёлочная гирлянда
+lampki|огоньки (гирлянда)
+Święty Mikołaj|Святой Николай, Дед Мороз
+rózga|розга
+kolęda|рождественская песня (колядка)
+kolędnicy|колядующие
+szopka|вертеп, рождественские ясли
+pasterka|полуночная рождественская месса
+ewangelia|Евангелие
+ubierać choinkę|наряжать ёлку
+śpiewać kolędy|петь колядки
+tłusty czwartek|жирный четверг
+Wielki Post|Великий пост
+Środa Popielcowa|Пепельная среда
+Wielki Tydzień|Страстная неделя
+palma wielkanocna|пасхальная пальма (вербная)
+święconka|освящение пасхальной еды
+pisanka|расписное пасхальное яйцо
+chrzan|хрен
+rzeżucha|кресс-салат
+sałatka jarzynowa|овощной салат (типа оливье)
+mazurek|мазурек (пасхальный пирог)
+babka wielkanocna|пасхальная баба (кулич)
+baranek|барашек
+zajączek|зайчик
+bazie|вербные котики
+śmigus-dyngus|смигус-дынгус (обливание водой)
+lany poniedziałek|Облитый понедельник
+wiosenne porządki|весенняя уборка
+malować pisanki|красить пасхальные яйца
+piec babkę|печь бабу
+siać rzeżuchę|сеять кресс-салат`);
+var e1=D(`Moim zdaniem|по моему мнению
+Według mnie|по-моему
+Uważam, że|я считаю, что
+Sądzę, że|я полагаю, что
+Myślę, że|я думаю, что
+Wydaje mi się, że|мне кажется, что
+Mam wrażenie, że|у меня ощущение, что
+Jestem przekonany, że|я убеждён, что
+Jestem przekonana, że|я убеждена, что
+Z pewnością|несомненно
+Z całą pewnością|с полной уверенностью
+Bez wątpienia|без сомнения
+Z mojego punktu widzenia|с моей точки зрения
+Zdaniem Ewy|по мнению Евы
+Jego / jej zdaniem|по его / её мнению
+Wiele osób uważa, że|многие считают, что
+Na ogół uważa się, że|обычно считается, что
+W Polsce uważa się, że|в Польше считается, что
+Zgadzam się z opinią, że|я согласен с мнением, что
+Nie zgadzam się z tą opinią|я не согласен с этим мнением
+Mimo wszystko uważam, że|несмотря ни на что, я считаю, что
+Muszę przyznać, że|должен признать, что
+Trzeba przyznać, że|надо признать, что
+Warto podkreślić, że|стоит подчеркнуть, что
+Należy też podkreślić, że|следует также подчеркнуть, что
+Warto dodać, że|стоит добавить, что
+Trzeba przypomnieć, że|надо напомнить, что
+Mam wątpliwości|у меня есть сомнения
+Trudno powiedzieć|трудно сказать
+Nie wiadomo, czy…|неизвестно, ли…
+Prawdopodobnie|вероятно
+Możliwe, że…|возможно, что…
+Być może|может быть
+Chyba|пожалуй, кажется
+Pewnie|наверное
+Na pewno|наверняка
+Co o tym sądzisz?|что ты об этом думаешь?
+Moim zdaniem nie warto…|на мой взгляд, не стоит…`);
+var e2=D(`Po pierwsze, po drugie, po trzecie|во-первых, во-вторых, в-третьих
+Przede wszystkim|прежде всего
+Poza tym|кроме того
+Ponadto|более того
+Na zakończenie|в заключение
+Podsumowując|подводя итог
+Z jednej strony… z drugiej strony…|с одной стороны… с другой стороны…
+Warto również dodać, że|стоит также добавить, что
+Jednak|однако
+Natomiast|а вот, зато
+Mimo że|хотя
+Mimo to|несмотря на это
+Dlatego|поэтому
+Dlatego też|именно поэтому
+Zatem|следовательно
+Więc|значит, итак
+Toteż|потому и
+Dlatego że|потому что
+Ponieważ|поскольку
+Bo|потому что (разг.)
+Dzięki temu|благодаря этому
+Z tego powodu|по этой причине
+Powoduje, że…|приводит к тому, что…
+Na przykład|например
+Jeśli chodzi o zdrowie, to…|что касается здоровья, то…
+Jak widać|как видно
+Oczywiście|конечно
+Przecież|ведь
+Nawet|даже
+Szczególnie|особенно
+Na szczęście|к счастью
+Niestety|к сожалению
+To pozwala zaoszczędzić czas|это позволяет сэкономить время
+Umożliwia|делает возможным
+Wystarczy…|достаточно…
+Pozwala to…|это позволяет…`);
+var e3=D(`Pewnego dnia|однажды
+Wczoraj|вчера
+Przedwczoraj|позавчера
+Dwa dni temu|два дня назад
+W zeszły weekend|в прошлые выходные
+W zeszłym tygodniu|на прошлой неделе
+Podczas wakacji|во время каникул
+Na początku maja|в начале мая
+Pod koniec wakacji|в конце каникул
+Pierwszego dnia|в первый день
+Ostatniego dnia|в последний день
+Następnego dnia|на следующий день
+Najpierw… potem… następnie…|сначала… потом… затем…
+Na koniec|в конце
+Nagle|вдруг
+Wtem|и тут
+Wtedy|тогда
+Wówczas|тогда (книжн.)
+W pewnej chwili|в какой-то момент
+W tej samej chwili|в тот же момент
+Kiedy tylko…|как только…
+Po chwili|через минуту
+Po pewnym czasie|через некоторое время
+Kilka minut później|несколько минут спустя
+Wkrótce potem|вскоре после этого
+Tymczasem|тем временем
+W tym samym czasie|в то же время
+Jednocześnie|одновременно
+W końcu|наконец
+Ostatecznie|в конечном счёте
+Odtąd|с тех пор
+Od tej chwili|с этого момента
+To był niezapomniany dzień|это был незабываемый день
+Nigdy nie zapomnę tego dnia|никогда не забуду этот день
+To była niezwykła przygoda|это было необычайное приключение
+Na szczęście wszystko dobrze się skończyło|к счастью, всё хорошо закончилось
+Okazało się, że…|оказалось, что…
+Po drodze|по дороге
+Nie miałem pojęcia|я понятия не имел
+W ten sposób|таким образом
+Zwykle|обычно
+Przez kilka minut|в течение нескольких минут
+Od dłuższego czasu|уже давно
+Odbyć się|состояться
+Wyruszyć w drogę|отправиться в путь`);
+var e4=D(`Szanowny Panie|Уважаемый господин
+Szanowna Pani|Уважаемая госпожа
+Szanowni Państwo|Уважаемые господа
+Drogi Tato, Kochana Mamo|дорогой папа, дорогая мама
+Moi Drodzy|мои дорогие
+Z wyrazami szacunku|с уважением
+Z poważaniem|с почтением
+Łączę wyrazy szacunku|выражаю своё уважение
+Pozdrawiam|с приветом
+Pozdrawiam serdecznie|сердечно приветствую
+Serdecznie pozdrawiam|искренне ваш
+Całuję|целую
+Ściskam|обнимаю
+Buziaki|чмоки
+Ucałowania|поцелуи
+Przepraszam, że tak długo nie pisałem|простите, что так долго не писал
+Dziękuję za Twój ostatni list|спасибо за твоё последнее письмо
+Pamiętasz, że…?|ты помнишь, что…?
+Muszę już kończyć|мне пора заканчивать
+Bardzo jestem ciekawy, co u Pani słychać|мне очень интересно, как у вас дела
+Koniecznie napisz, co u Ciebie słychać|обязательно напиши, как у тебя дела
+Napisz proszę jak najszybciej|напиши, пожалуйста, как можно скорее
+Czekam na Twój e-mail|жду твоего письма
+Czekam na Pana / Pani e-mail|жду вашего письма
+Zadzwonię w przyszłym tygodniu|позвоню на следующей неделе
+Do widzenia, do zobaczenia|до свидания, до встречи
+list formalny|официальное письмо
+list nieformalny|неформальное письмо
+adresat|адресат
+nadawca|отправитель
+podpis|подпись
+formuła pożegnalna|заключительная формула
+zwrot do adresata|обращение к адресату
+Chciałbym zaproponować Ci…|я хотел бы предложить тебе…
+Mam nadzieję, że…|надеюсь, что…
+Wiem od Moniki, że…|я знаю от Моники, что…
+Udało nam się…|нам удалось…
+Zdecydowaliśmy się na…|мы решили в пользу…`);
+var e5=D(`Bardzo dziękuję za…|большое спасибо за…
+Serdecznie dziękuję za…|сердечно благодарю за…
+Chciałbym podziękować za…|я хотел бы поблагодарить за…
+Jestem wdzięczny za…|я благодарен за…
+Jestem niezmiernie wdzięczna za…|я безмерно благодарна за…
+Dzięki Tobie…|благодаря тебе…
+Bez Twojej pomocy…|без твоей помощи…
+Nie wiem, co bym bez Ciebie zrobiła|не знаю, что бы я без тебя делала
+Proszę przyjąć szczere wyrazy wdzięczności|примите искреннюю благодарность
+Chciałbym wyrazić swoją wdzięczność|я хотел бы выразить свою благодарность
+Przesyłam najserdeczniejsze życzenia|посылаю самые сердечные пожелания
+z okazji urodzin|по случаю дня рождения
+z okazji imienin|по случаю именин
+z okazji ślubu|по случаю свадьбы
+z okazji Nowego Roku|по случаю Нового года
+z okazji Dnia Nauczyciela|по случаю Дня учителя
+Żyę Ci zdrowia, szczęścia i radości|желаю тебе здоровья, счастья и радости
+Żyę wielu sukcesów w życiu prywatnym i zawodowym|желаю многих успехов в личной жизни и в карьере
+Niech ten dzień będzie pełen radości|пусть этот день будет полон радости
+Niech Panią zawsze otaczają zdolni słuchacze|пусть вас всегда окружают способные слушатели
+Bądźcie sobie wierni i kochajcie się|будьте верны друг другу и любите друг друга
+Nie mogłem być obecny|я не смог присутствовать
+Serdecznie zapraszam na…|сердечно приглашаю на…
+Chciałbym zaprosić Cię na…|хотел бы пригласить тебя на…
+Mam zaszczyt zaprosić…|имею честь пригласить…
+Przyjdź koniecznie!|обязательно приходи!
+Będzie mi bardzo miło|мне будет очень приятно
+Mam nadzieję, że znajdziesz czas|надеюсь, ты найдёшь время
+Mam nadzieję, że przyjmiesz moje zaproszenie|надеюсь, ты примешь моё приглашение
+spotkanie odbędzie się w poniedziałek|встреча состоится в понедельник
+impreza rozpocznie się o godz. 20.00|вечеринка начнётся в 20:00
+restauracja znajduje się przy ulicy…|ресторан находится на улице…
+klub mieści się w Śródmieściu|клуб располагается в центре
+Przesyłam serdeczne pozdrowienia z…|шлю сердечный привет из…
+Pogoda jest fantastyczna|погода великолепная
+Czuję się tu jak w raju|я здесь как в раю
+Staram się zwiedzać okolicę|я стараюсь осматривать окрестности
+Mam nadzieję, że Pani również korzysta z uroków lata|надеюсь, что и вы наслаждаетесь летом`);
+var e6=D(`Wynajmę mieszkanie|сдам квартиру
+Sprzedam samochód|продам машину
+Kupię dom|куплю дом
+Poszukuję pracownika|ищу работника
+Zaginął portfel|пропал кошелёк
+Zaginął kot|пропал кот
+Na znalazcę czeka nagroda|нашедшего ждёт награда
+Proszę dzwonić pod numer…|прошу звонить по номеру…
+Zainteresowanych proszę o kontakt|заинтересованных прошу связаться
+czynsz wynosi 2200 zł|арендная плата составляет 2200 злотых
+opłaty|платежи
+kaucja|залог
+młodzież|молодёжь
+zęściowo umeblowane|частично меблированное
+w pełni wyposażone|полностью оборудованное
+wyremontowane|с ремонтом
+cena do negocjacji|цена по договорённости
+doskonały punkt komunikacyjny|отличная транспортная доступность
+Informuje, że…|информирует, что…
+Zawiadamia, że…|уведомляет, что…
+Uprzejmie informujemy, że…|вежливо информируем, что…
+przerwa w dostawie prądu|перебой в подаче электричества
+Za utrudnienia przepraszamy|приносим извинения за неудобства
+Dziękujemy za zrozumienie|благодарим за понимание
+Obecność obowiązkowa|присутствие обязательно
+Uprzejmie prosimy o…|любезно просим о…
+weszły w życie nowe przepisy|вступили в силу новые правила
+segregacja odpadów|сортировка отходов
+spółdzielnia mieszkaniowa|жилищный кооператив
+zarząd|правление, управление
+Szczegółowe informacje znajdą Państwo na stronie…|подробную информацию вы найдёте на сайте…
+warunki oferowanej pracy|условия предлагаемой работы`);
+var e7=D(`To zdjęcie przedstawia…|на этой фотографии изображено…
+Na pierwszym planie|на переднем плане
+Na drugim planie|на втором плане
+W głębi|в глубине
+W prawym górnym rogu|в правом верхнем углу
+W prawym dolnym rogu|в правом нижнем углу
+Widać… / Można zobaczyć…|видно… / можно увидеть…
+Wygląda na trzydzieści lat|выглядит лет на тридцать
+Ma na sobie…|на нём (ней) надето…
+Jest ubrany w…|он одет в…
+Trzyma w ręce…|держит в руке…
+Wydaje mi się, że to jest lato|мне кажется, что это лето
+Atmosfera jest swobodna i radosna|атмосфера свободная и радостная
+Wszyscy są w doskonałym nastroju|все в прекрасном настроении
+Mam wrażenie, że on jest zdenerwowany|мне кажется, он нервничает
+Pewnie zastanawia się, co zrobić|наверное, думает, что делать
+Ostatnio obejrzałem film|недавно я посмотрел фильм
+Film, który zrobił na mnie duże wrażenie|фильм, который произвёл на меня большое впечатление
+pod tytułem…|под названием…
+w reżyserii Jana Nowaka|режиссёр Ян Новак
+Autorem książki jest…|автор книги —…
+Premiera odbyła się…|премьера состоялась…
+Akcja filmu rozgrywa się w…|действие фильма происходит в…
+Główny bohater|главный герой
+Główny wątek|основная сюжетная линия
+ścieżka dźwiękowa|саундтрек
+czarno-białe zdjęcia|чёрно-белые кадры
+Polecam wszystkim…|рекомендую всем…
+Zachęcam wszystkich do…|призываю всех к…
+Z całą pewnością warto obejrzeć|совершенно точно стоит посмотреть
+Nie polecam nikomu…|никому не рекомендую…
+Najbardziej podobał mi się…|больше всего мне понравился…
+Duże wrażenie zrobił na mnie…|большое впечатление произвёл на меня…
+Mimo że nie przepadam za kryminałami…|хотя я не очень люблю детективы…
+fascynująca lektura|увлекательное чтение`);
+var e8=D(`Słucham.|Слушаю вас.
+Chciałbym zapytać, czy…|я хотел бы спросить, … ли…
+Dzwonię w sprawie ogłoszenia|звоню по поводу объявления
+Chciałbym zarezerwować stolik|хотел бы забронировать столик
+Chciałbym zamówić pizzę|хотел бы заказать пиццу
+Chciałbym dowiedzieć się, czy…|хотел бы узнать, … ли…
+Czy może mi pan/pani powiedzieć…?|не могли бы вы мне сказать…?
+Proszę mi jeszcze powiedzieć…|скажите мне, пожалуйста, ещё…
+Czy mógłby pan…? / Czy mogłaby pani…?|не могли бы вы…? (м. / ж.)
+Czy możesz mi powiedzieć…?|можешь мне сказать…?
+W jaki sposób możemy się skontaktować?|как мы можем связаться?
+W jaki sposób mogę złożyć zamówienie?|как я могу оформить заказ?
+Przecież mówił pan, że…|ведь вы говорили, что…
+Powinien pan / powinna pani…|вам следует…
+Na pana miejscu wybrałbym tę ofertę|на вашем месте я бы выбрал это предложение
+Na twoim miejscu poszedłbym do…|на твоём месте я бы пошёл в…
+Skorzystam z państwa oferty|я воспользуюсь вашим предложением
+Jestem pewien, że…|я уверен, что…
+Bardzo dziękuję za wszystkie informacje|большое спасибо за всю информацию
+Musimy wreszcie podjąć decyzję|мы наконец должны принять решение
+Musimy wziąć pod uwagę…|мы должны принять во внимание…
+Czy pomyślałeś, ile to będzie kosztować?|ты подумал, сколько это будет стоить?
+Mam kompromisową propozycję|у меня компромиссное предложение
+No cóż…|Ну что ж…
+To prawda, ale…|это правда, но…
+Przecież i tak…|ведь и так…
+Jeśli znajdziesz taką ofertę, to zobaczymy|если найдёшь такое предложение, посмотрим
+Do widzenia. Do zobaczenia.|До свидания. До встречи.`);
+var decks=[{id:"r1",o:1,name:"Rozdział I · Wygląd ("+r1.length+")",cards:r1},{id:"tr",o:90,name:"Moja lista · podróże ("+travel.length+")",cards:travel},{id:"cu",o:99,name:"Moje dodane",cards:[]},{id:"r2",o:2,name:"Rozdział II · Kosmetyki ("+r2.length+")",cards:r2},{id:"r3",o:3,name:"Rozdział III · Ubrania ("+r3.length+")",cards:r3},{id:"r4",o:4,name:"Rozdział IV · Zainteresowania ("+r4.length+")",cards:r4},{id:"r5",o:5,name:"Rozdział V · Charakter ("+r5.length+")",cards:r5},{id:"r6",o:6,name:"Rozdział VI · Rodzina ("+r6.length+")",cards:r6},{id:"r7",o:7,name:"Rozdział VII · Sklepy i usługi ("+r7.length+")",cards:r7},{id:"r8",o:8,name:"Rozdział VIII · Kuchnia ("+r8.length+")",cards:r8},{id:"r9",o:9,name:"Rozdział IX · Dom i mieszkanie ("+r9.length+")",cards:r9},{id:"r10",o:10,name:"Rozdział X · Miasto ("+r10.length+")",cards:r10},{id:"r11",o:11,name:"Rozdział XI · Wieś i zwierzęta ("+r11.length+")",cards:r11},{id:"r12",o:12,name:"Rozdział XII · Pogoda ("+r12.length+")",cards:r12},{id:"r13",o:13,name:"Rozdział XIII · Zdrowie ("+r13.length+")",cards:r13},{id:"r14",o:14,name:"Rozdział XIV · Sport ("+r14.length+")",cards:r14},{id:"r15",o:15,name:"Rozdział XV · Podróże ("+r15.length+")",cards:r15},{id:"r16",o:16,name:"Rozdział XVI · Święta i zwyczaje ("+r16.length+")",cards:r16},{id:"e1",o:101,t:"w",name:"Opinie i przypuszczenia ("+e1.length+")",cards:e1},{id:"e2",o:102,t:"w",name:"Argumentowanie i logika ("+e2.length+")",cards:e2},{id:"e3",o:103,t:"w",name:"Opowiadanie i czas ("+e3.length+")",cards:e3},{id:"e4",o:104,t:"w",name:"Listy i e-maile ("+e4.length+")",cards:e4}];
+try{var s=localStorage.getItem(KEY);if(s){var p=JSON.parse(s);if(Array.isArray(p))decks[2].cards=p}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(decks[2].cards))}catch(e){}}
+var d=0,i=0,ruFirst=false,tab="s";
+var $=function(id){return document.getElementById(id)};
+var card=$("card"),sel=$("deck");
+function fill(){sel.innerHTML="";decks.map(function(x,k){return k}).filter(function(k){return (decks[k].t||"s")===tab}).sort(function(a,b){return decks[a].o-decks[b].o}).forEach(function(k){var x=decks[k],o=document.createElement("option");o.value=k;o.textContent=x.id==="cu"?"Moje dodane ("+x.cards.length+")":x.name;sel.appendChild(o)});sel.value=d}
+function render(){
+  var cards=decks[d].cards;
+  $("del").disabled=d!==2;
+  if(!cards.length){$("fw").textContent="Brak fiszek";$("bw").textContent="Dodaj pierwszą poniżej";$("fl").textContent="";$("bl").textContent="";$("count").textContent="0 / 0";return}
+  if(i>=cards.length)i=0;if(i<0)i=cards.length-1;
+  var c=cards[i],a=ruFirst?c[0]:c[1],b=ruFirst?c[1]:c[0];
+  $("fw").textContent=a;$("bw").textContent=b;
+  $("fl").textContent=ruFirst?"po rosyjsku":"po polsku";
+  $("bl").textContent=ruFirst?"po polsku":"po rosyjsku";
+  $("fw").lang=ruFirst?"ru":"pl";$("bw").lang=ruFirst?"pl":"ru";
+  $("count").textContent=(i+1)+" / "+cards.length;
+}
+function go(n){var was=card.classList.contains("flipped");card.classList.remove("flipped");setTimeout(function(){i+=n;render()},was?250:0)}
+function flip(){card.classList.toggle("flipped")}
+card.addEventListener("click",flip);
+$("next").onclick=function(){go(1)};
+$("prev").onclick=function(){go(-1)};
+sel.onchange=function(){d=+sel.value;i=0;card.classList.remove("flipped");render()};
+function setTab(t){tab=t;$("tabS").classList.toggle("on",t==="s");$("tabW").classList.toggle("on",t==="w");d=decks.findIndex(function(x){return (x.t||"s")===t});i=0;card.classList.remove("flipped");fill();render()}
+$("tabS").onclick=function(){setTab("s")};$("tabW").onclick=function(){setTab("w")};
+$("shuffle").onclick=function(){var c=decks[d].cards;for(var k=c.length-1;k>0;k--){var j=Math.floor(Math.random()*(k+1));var t=c[k];c[k]=c[j];c[j]=t}i=0;card.classList.remove("flipped");render()};
+$("dir").onclick=function(){ruFirst=!ruFirst;$("dir").textContent=ruFirst?"Kierunek: rosyjski → polski":"Kierunek: polski → rosyjski";card.classList.remove("flipped");render()};
+$("del").onclick=function(){var c=decks[2].cards;if(!c.length)return;c.splice(i,1);save();fill();card.classList.remove("flipped");render()};
+$("add").addEventListener("submit",function(e){e.preventDefault();var r=$("ru").value.trim(),p=$("pl").value.trim();if(!r||!p)return;decks[2].cards.push([r,p]);save();if(tab!=="s")setTab("s");d=2;i=decks[2].cards.length-1;$("ru").value="";$("pl").value="";fill();card.classList.remove("flipped");render()});
+document.addEventListener("keydown",function(e){
+  var t=e.target.tagName;if(t==="INPUT"||t==="SELECT")return;
+  if(e.key==="ArrowRight"){go(1)}else if(e.key==="ArrowLeft"){go(-1)}
+  else if(e.key===" "&&e.target!==card){e.preventDefault();flip()}
+});
+fill();render();
+})();
+</script>
+</body>
+</html>
